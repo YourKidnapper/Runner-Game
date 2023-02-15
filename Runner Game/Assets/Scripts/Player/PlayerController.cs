@@ -7,7 +7,7 @@ public class PlayerController : MonoBehaviour
     public float moveSpeed = 6.5f;
     public Rigidbody2D player;
     Vector2 movement;
-    
+    public bool isInBattle = false;
 
     void Start() {
 
@@ -18,13 +18,14 @@ public class PlayerController : MonoBehaviour
     {
         gameObject.tag = "Player";
         movement.x = Input.GetAxisRaw("Horizontal");
-        movement.y = Input.GetAxisRaw("Vertical");
     }
     
         
     void FixedUpdate()
     {
-        player.MovePosition(player.position + movement * moveSpeed * Time.fixedDeltaTime);
+        if(!isInBattle){
+            player.MovePosition(player.position + movement * moveSpeed * Time.fixedDeltaTime);
+        }
     }
 
 }
