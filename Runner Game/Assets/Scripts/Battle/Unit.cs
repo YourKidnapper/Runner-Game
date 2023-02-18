@@ -6,30 +6,44 @@ public class Unit : MonoBehaviour
 {
 
     public string unitName;
-    public bool isArmored;
+    public bool isArmored = false;
+    public bool isDashed = false;
 
     public int damage;
-    public int defense;
+    public int defence;
 
     public int maxHP;
     public int currentHP;
 
+    public PlayerController controller;
+
     public bool TakeDamage(int damage, Unit unit)
     {
-        if(unit.isArmored == true)
+        if(unit.isDashed == true)
         {
-            if(unit.defense > damage)
-                return true;
+            return false;
+        }
+        if(unit.isArmored)
+        {
+            if(unit.defence > damage)
+                return false;
             else
-                currentHP -= damage;
+            {
+                currentHP -= damage - defence;
+            }
         }
         else
         {
             currentHP -= damage;
         }
-        if(currentHP <= 0)
+        if(unit.currentHP <= 0)
             return true;
         else
             return false;
+    }
+
+    public void IsInBattle(bool state)
+    {
+        controller.isInBattle = state;
     }
 }

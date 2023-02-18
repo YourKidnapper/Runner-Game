@@ -4,31 +4,31 @@ using UnityEngine;
 
 public class FollowCamera : MonoBehaviour
 {
+    public Transform target;
     public float interpVelocity;
-    public GameObject target;
     public Vector3 offset;
     Vector3 targetPos;
-    // Start is called before the first frame update
+
     void Start()
     {
         targetPos = transform.position;
     }
 
-    // Update is called once per frame
-    void FixedUpdate()
+    void Update()
     {
         Follow();
     }
 
     void Follow()
     {
-        if(target){
+        target = GameObject.FindGameObjectWithTag("Player").transform;
+        if(target)
+        {
             Vector3 posNoZ = transform.position;
             Vector3 targetDirection = (target.transform.position - posNoZ);
             interpVelocity = targetDirection.magnitude * 10f;
             targetPos = transform.position + (targetDirection.normalized * interpVelocity * Time.deltaTime);
             transform.position = Vector3.Lerp(transform.position, targetPos - offset, 0.25f);
         }
-        
     }
 }

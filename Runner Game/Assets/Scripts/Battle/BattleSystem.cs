@@ -2,38 +2,64 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
-public enum BattleState { START, PLAYERTURN, ENEMYTURN, WON, LOST}
+public enum BattleState { START, ATTACK, DEFEND, PLAYERTURN, ENEMYTURN, WON, LOST, CHILL}
 
 public class BattleSystem : MonoBehaviour
 {
+    //Controller
     public PlayerController controller;
 
+    //GameObjects
     public GameObject playerPrefab;
     public GameObject enemyPrefab;
 
+    //Transform
     public Transform playerBattleStation;
     public Transform enemyBattleStation;
 
+    //Text
+    public Text battleState;
+    public Text turnCounter;
+
+    //Units
     Unit playerUnit;
     Unit enemyUnit;
 
+    private float lastClick;
+    
+
+    //Buttons
+    public Button dash;
+
+    //HUD
     public BattleHUD playerHUD;
     public BattleHUD enemyHUD;
 
+    public float turns;
+    public float currentTurn;
+
+    public CardZone cardZone;
     public BattleState state;
+
+
     // Start is called before the first frame update
     void Start()
     {
         state = BattleState.START;
         StartCoroutine(SetupBattle());
     }
-
+    
     IEnumerator SetupBattle()
-    {   
-        controller.isInBattle = true;
-        GameObject playerGO = Instantiate(playerPrefab, playerBattleStation);
-        playerUnit = playerGO.GetComponent<Unit>();
+    {
+        GameObject playerGO = new GameObject();   
+        if(!GameObject.FindGameObjectWithTag("Player"))
+        {
+            playerGO = Instantiate(playerPrefab, playerBattleStation);
+            playerUnit = playerGO.gameObject.GetComponent<Unit>();
+        }
+        playerUnit.IsInBattle(true);
 
         GameObject enemyGO = Instantiate(enemyPrefab, enemyBattleStation);
         enemyUnit = enemyGO.GetComponent<Unit>();
@@ -41,7 +67,7 @@ public class BattleSystem : MonoBehaviour
         playerHUD.SetHUD(playerUnit);
         enemyHUD.SetHUD(enemyUnit); 
 
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
         state = BattleState.PLAYERTURN;
         PlayerTurn();
@@ -49,65 +75,99 @@ public class BattleSystem : MonoBehaviour
 
     IEnumerator PlayerAttack()
     {
-        bool isDead = enemyUnit.TakeDamage(playerUnit.damage, playerUnit);
+        state = BattleState.ATTACK;
+        battleState.text = "You're attacking";
+        bool isDead = enemyUnit.TakeDamage(playerUnit.damage, enemyUnit);
 
-        enemyHUD.SetHP(enemyUnit.currentHP);
- 
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
         if(isDead)
         {
             state = BattleState.WON;
+            enemyHUD.SetHP(enemyUnit.currentHP =  0);
             EndBattle();
         }
         else
         {
             state = BattleState.ENEMYTURN;
+            enemyHUD.SetHP(enemyUnit.currentHP);
+
+            yield return new WaitForSeconds(1f);
             StartCoroutine(EnemyTurn());
         }
     }
 
     IEnumerator EnemyTurn()
     {
-        yield return new WaitForSeconds(1f);
-
-        bool isDead = playerUnit.TakeDamage(enemyUnit.damage, enemyUnit);
+        battleState.text = "Enemy Turn";
+        bool isDead = playerUnit.TakeDamage(enemyUnit.damage, playerUnit);
         
-        playerHUD.SetHP(playerUnit.currentHP);
-
         yield return new WaitForSeconds(1f);
 
         if(isDead)
         {
             state = BattleState.LOST;
+            playerHUD.SetHP(playerUnit.currentHP = 0);
             EndBattle();
         }
         else
         {
             state = BattleState.PLAYERTURN;
+            playerHUD.SetHP(playerUnit.currentHP);
+
+            yield return new WaitForSeconds(1f);
             PlayerTurn();
         }
     }
 
     void EndBattle()
     {
+        battleState.text = "Battle is over!";
+
         if(state == BattleState.WON)
         {
-            controller.isInBattle = false;
+            playerUnit.IsInBattle(false);
+            turnCounter.text = "";
+            turns = 0;
+            state = BattleState.CHILL;
+            Destroy(GameObject.FindGameObjectWithTag("Enemy"));
+            enemyHUD.clearHUD(enemyUnit);
+
+            for(int i = 0; i < cardZone.totalCards; i++)
+            {
+                cardZone.cards[i].SetActive(true); 
+            }
+
         }
         else if (state == BattleState.LOST)
         {
-            
+            battleState.text = "You lost";
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
     }
 
     void PlayerTurn()
     {
-        
+        playerUnit.isArmored = false;
+        playerUnit.isDashed = false;
+        turns++;
+        turnCounter.text = turns.ToString();
+        battleState.text = "Your turn";
+        if(currentTurn >= 1)
+        {
+            dash.gameObject.SetActive(false);
+            currentTurn = currentTurn - 0.5f;
+        }
+        else
+        {
+            dash.gameObject.SetActive(true);
+        }
     }
 
     public void OnAttackButton()
     {
+        if(lastClick > (Time.time - 2f)) return;
+        lastClick = Time.time;
         if(state != BattleState.PLAYERTURN)
             return;
         
@@ -116,6 +176,8 @@ public class BattleSystem : MonoBehaviour
 
     public void OnDefenceButton()
     {
+        if(lastClick > (Time.time - 2f)) return;
+        lastClick = Time.time;
         if(state != BattleState.PLAYERTURN)
             return;
         
@@ -124,7 +186,41 @@ public class BattleSystem : MonoBehaviour
 
     public IEnumerator PlayerDefence()
     {
+        state = BattleState.DEFEND;
+        battleState.text = "You're defending yourself";
         playerUnit.isArmored = true;
+
         yield return new WaitForSeconds(1f);
+
+        state = BattleState.ENEMYTURN;
+        StartCoroutine(EnemyTurn());
+    }
+
+    public void OnDashButton()
+    {
+        if(lastClick > (Time.time - 2f)) return;
+        lastClick = Time.time;
+        if(state != BattleState.PLAYERTURN)
+            return;
+        if(dash){
+            if(state != BattleState.PLAYERTURN)
+                return;
+            StartCoroutine(PlayerDash());
+        }
+    }
+
+    public IEnumerator PlayerDash()
+    {
+        battleState.text = "You're dashed";
+        playerUnit.isDashed = true;
+
+        yield return new WaitForSeconds(1f);
+
+        if(dash)
+        {
+            currentTurn++;
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
     }
 }
