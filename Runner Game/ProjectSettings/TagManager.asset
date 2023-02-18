@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 2
   tags:
   - Enemy
+<<<<<<< HEAD
+=======
+  - BattleSystem
+  - Zone
+>>>>>>> bigB
   layers:
   - Default
   - TransparentFX
